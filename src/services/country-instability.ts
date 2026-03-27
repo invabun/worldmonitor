@@ -115,6 +115,12 @@ const COUNTRY_KEYWORDS: Record<string, string[]> = {
   VE: ['venezuela', 'caracas', 'maduro'],
   BR: ['brazil', 'brasilia', 'lula', 'bolsonaro'],
   AE: ['uae', 'emirates', 'dubai', 'abu dhabi'],
+  MY: ['malaysia', 'kuala lumpur', 'anwar'],
+  SG: ['singapore', 'lee hsien loong', 'wong'],
+  ID: ['indonesia', 'jakarta', 'jokowi', 'prabowo'],
+  PH: ['philippines', 'manila', 'marcos', 'duterte'],
+  VN: ['vietnam', 'hanoi', 'ho chi minh'],
+  TH: ['thailand', 'bangkok'],
 };
 
 // Geopolitical baseline risk scores (0-50)
@@ -142,6 +148,12 @@ const BASELINE_RISK: Record<string, number> = {
   VE: 40,   // Economic collapse, authoritarian
   BR: 15,   // Large democracy, social tensions, Amazon deforestation
   AE: 10,   // Stable, regional hub, low internal unrest
+  MY: 15,   // Stable but with some political shifts
+  SG: 5,    // Highly stable
+  ID: 20,   // Large democracy, some regional issues
+  PH: 25,   // South China Sea tensions, internal politics
+  VN: 15,   // Stable authoritarian
+  TH: 30,   // History of coups and political protests
 };
 
 // Event significance multipliers
@@ -170,6 +182,12 @@ const EVENT_MULTIPLIER: Record<string, number> = {
   VE: 1.8,  // Suppressed
   BR: 0.6,  // Large democracy, many events
   AE: 1.5,  // Events rare, significant when occur
+  MY: 1.0,  // Moderate
+  SG: 3.0,  // Very rare, highly significant
+  ID: 0.8,  // Frequent protests
+  PH: 0.8,  // Frequent protests and events
+  VN: 2.5,  // Highly suppressed
+  TH: 1.0,  // Frequent protests but significant
 };
 
 const countryDataMap = new Map<string, CountryData>();
@@ -248,6 +266,7 @@ const ISO3_TO_ISO2: Record<string, string> = {
   COL: 'CO', NGA: 'NG', PSE: 'PS', TUR: 'TR', PAK: 'PK', IRN: 'IR',
   IND: 'IN', CHN: 'CN', RUS: 'RU', ISR: 'IL', SAU: 'SA', USA: 'US',
   TWN: 'TW', PRK: 'KP', POL: 'PL', DEU: 'DE', FRA: 'FR', GBR: 'GB',
+  MYS: 'MY', SGP: 'SG', IDN: 'ID', PHL: 'PH', VNM: 'VN', THA: 'TH',
 };
 
 const COUNTRY_NAME_TO_ISO: Record<string, string> = {
@@ -257,6 +276,8 @@ const COUNTRY_NAME_TO_ISO: Record<string, string> = {
   'Colombia': 'CO', 'Nigeria': 'NG', 'Palestine': 'PS', 'Turkey': 'TR',
   'Pakistan': 'PK', 'Iran': 'IR', 'India': 'IN', 'China': 'CN',
   'Russia': 'RU', 'Israel': 'IL', 'Saudi Arabia': 'SA',
+  'Malaysia': 'MY', 'Singapore': 'SG', 'Indonesia': 'ID',
+  'Philippines': 'PH', 'Vietnam': 'VN', 'Thailand': 'TH',
 };
 
 export function ingestDisplacementForCII(countries: CountryDisplacement[]): void {
@@ -278,6 +299,7 @@ export function ingestDisplacementForCII(countries: CountryDisplacement[]): void
 const ZONE_COUNTRY_MAP: Record<string, string[]> = {
   'Ukraine': ['UA'], 'Middle East': ['IR', 'IL', 'SA', 'SY', 'YE'],
   'South Asia': ['PK', 'IN'], 'Myanmar': ['MM'],
+  'Southeast Asia': ['MY', 'SG', 'ID', 'PH', 'VN', 'TH'],
 };
 
 export function ingestClimateForCII(anomalies: ClimateAnomaly[]): void {
@@ -312,6 +334,12 @@ const COUNTRY_BOUNDS: Record<string, [number, number, number, number]> = {
   IN: [6, 36, 68, 97],       // India
   CN: [18, 54, 73, 135],     // China
   RU: [41, 82, 19, 180],     // Russia (simplified)
+  MY: [1, 7, 99, 120],       // Malaysia
+  SG: [1.1, 1.5, 103.5, 104.1], // Singapore
+  ID: [-11, 6, 95, 141],     // Indonesia
+  PH: [4, 22, 116, 127],     // Philippines
+  VN: [8, 24, 102, 110],     // Vietnam
+  TH: [5, 21, 97, 106],      // Thailand
 };
 const LOCATION_COUNTRY_CANDIDATES = Object.keys(TIER1_COUNTRIES);
 
@@ -630,15 +658,15 @@ export function calculateCII(): CountryScore[] {
     const hotspotBoost = getHotspotBoost(code);
     const newsUrgencyBoost = components.information >= 70 ? 5
       : components.information >= 50 ? 3
-      : 0;
+        : 0;
     const focalUrgency = focalUrgencies.get(code);
     const focalBoost = focalUrgency === 'critical' ? 8
       : focalUrgency === 'elevated' ? 4
-      : 0;
+        : 0;
 
     const displacementBoost = data.displacementOutflow >= 1_000_000 ? 8
       : data.displacementOutflow >= 100_000 ? 4
-      : 0;
+        : 0;
     const climateBoost = data.climateStress;
 
     const blendedScore = baselineRisk * 0.4 + eventScore * 0.6 + hotspotBoost + newsUrgencyBoost + focalBoost + displacementBoost + climateBoost;
@@ -687,14 +715,14 @@ export function getCountryScore(code: string): number | null {
   const hotspotBoost = getHotspotBoost(code);
   const newsUrgencyBoost = components.information >= 70 ? 5
     : components.information >= 50 ? 3
-    : 0;
+      : 0;
   const focalUrgency = focalPointDetector.getCountryUrgency(code);
   const focalBoost = focalUrgency === 'critical' ? 8
     : focalUrgency === 'elevated' ? 4
-    : 0;
+      : 0;
   const displacementBoost = data.displacementOutflow >= 1_000_000 ? 8
     : data.displacementOutflow >= 100_000 ? 4
-    : 0;
+      : 0;
   const climateBoost = data.climateStress;
   const blendedScore = baselineRisk * 0.4 + eventScore * 0.6 + hotspotBoost + newsUrgencyBoost + focalBoost + displacementBoost + climateBoost;
 
